@@ -6,13 +6,22 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
+import android.widget.EditText
 import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.zenotap.keyboard.sync.ZenoTapSyncClient
+import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var tvStatus: TextView
     private lateinit var tvDeckCount: TextView
+    private lateinit var tvSyncStatus: TextView
+    private lateinit var tvSyncDetails: TextView
+    private lateinit var btnPairZenoDeck: Button
+    private lateinit var btnSyncNow: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -20,11 +29,15 @@ class MainActivity : AppCompatActivity() {
 
         tvStatus = findViewById(R.id.tv_ime_status)
         tvDeckCount = findViewById(R.id.tv_deck_count)
+        tvSyncStatus = findViewById(R.id.tv_sync_status)
+        tvSyncDetails = findViewById(R.id.tv_sync_details)
 
         val btnEnableIme = findViewById<Button>(R.id.btn_enable_ime)
         val btnSelectIme = findViewById<Button>(R.id.btn_select_ime)
         val btnRefresh = findViewById<Button>(R.id.btn_refresh_status)
         val btnAddSample = findViewById<Button>(R.id.btn_add_sample)
+        btnPairZenoDeck = findViewById(R.id.btn_pair_zenodeck)
+        btnSyncNow = findViewById(R.id.btn_sync_now)
 
         btnEnableIme.setOnClickListener {
             startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
@@ -42,6 +55,14 @@ class MainActivity : AppCompatActivity() {
         btnAddSample.setOnClickListener {
             DeckStorageManager.ensureStarterPack(this)
             checkStatus()
+        }
+
+        btnPairZenoDeck.setOnClickListener {
+            showPairDialog()
+        }
+
+        btnSyncNow.setOnClickListener {
+            triggerSync()
         }
 
         // Initialize starter reactions
@@ -75,5 +96,87 @@ class MainActivity : AppCompatActivity() {
             else if (isEnabled) 0xFF3B82F6.toInt()
             else 0xFFF59E0B.toInt()
         )
+
+        // Cloud sync status
+        val isPaired = ZenoTapSyncClient.isPaired(this)
+        if (isPaired) {
+            val device = ZenoTapSyncClient.getDeviceName(this)
+            tvSyncStatus.text = "Linked"
+            tvSyncStatus.setTextColor(0xFF10B981.toInt())
+            tvSyncDetails.text = "Linked to ZenoDeck cloud deck ($device). Sync token is secured."
+            btnPairZenoDeck.text = "Unlink Account"
+            btnSyncNow.isEnabled = true
+        } else {
+            tvSyncStatus.text = "Not Linked"
+            tvSyncStatus.setTextColor(0xFFF59E0B.toInt())
+            tvSyncDetails.text = "Pair with ZenoDeck to automatically sync your custom reaction GIFs."
+            btnPairZenoDeck.text = "Link Account (6-Digit Code)"
+            btnSyncNow.isEnabled = false
+        }
+    }
+
+    private fun showPairDialog() {
+        if (ZenoTapSyncClient.isPaired(this)) {
+            AlertDialog.Builder(this)
+                .setTitle("Unlink ZenoDeck Account?")
+                .setMessage("This will remove your sync token from this device. Local GIFs will remain saved.")
+                .setPositiveButton("Unlink") { _, _ ->
+                    ZenoTapSyncClient.unpair(this)
+                    checkStatus()
+                    Toast.makeText(this, "Device unlinked", Toast.LENGTH_SHORT).show()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+            return
+        }
+
+        val input = EditText(this).apply {
+            hint = "6-digit code (e.g. 849201)"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            setPadding(48, 32, 48, 32)
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Link ZenoDeck Account")
+            .setMessage("Enter the 6-digit pairing code shown in your ZenoDeck Web App:")
+            .setView(input)
+            .setPositiveButton("Link Device") { _, _ ->
+                val code = input.text.toString().trim()
+                if (code.length != 6) {
+                    Toast.makeText(this, "Please enter a valid 6-digit code", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+
+                Toast.makeText(this, "Pairing device...", Toast.LENGTH_SHORT).show()
+                thread {
+                    val result = ZenoTapSyncClient.pairDevice(this, ZenoTapSyncClient.DEFAULT_SERVER_URL, code)
+                    runOnUiThread {
+                        result.onSuccess {
+                            Toast.makeText(this, "Successfully paired to ZenoDeck!", Toast.LENGTH_SHORT).show()
+                            checkStatus()
+                            triggerSync()
+                        }.onFailure { err ->
+                            Toast.makeText(this, "Pairing failed: ${err.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun triggerSync() {
+        Toast.makeText(this, "Syncing cloud deck...", Toast.LENGTH_SHORT).show()
+        thread {
+            val result = ZenoTapSyncClient.syncDeck(this)
+            runOnUiThread {
+                result.onSuccess { count ->
+                    Toast.makeText(this, "Sync complete! $count new GIFs downloaded.", Toast.LENGTH_SHORT).show()
+                    checkStatus()
+                }.onFailure { err ->
+                    Toast.makeText(this, "Sync error: ${err.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
     }
 }
