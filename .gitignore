@@ -1,0 +1,17 @@
+*.iml
+.gradle
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+*.apk
+*.aab
+output-metadata.json
+
+# Built binaries & caches
+app/build/
+build/
+.kotlin/
