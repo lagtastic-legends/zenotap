@@ -206,6 +206,36 @@
                 android:textColor="#FFFFFF"
                 android:textSize="13sp"
                 android:textStyle="bold" />
+
+            <!-- Injected Media Result Display -->
+            <LinearLayout
+                android:id="@+id/layout_test_result"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="#27272A"
+                android:orientation="vertical"
+                android:padding="12dp"
+                android:gravity="center"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/tv_test_result"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🎉 GIF Injected Successfully!"
+                    android:textColor="#10B981"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <ImageView
+                    android:id="@+id/iv_test_preview"
+                    android:layout_width="160dp"
+                    android:layout_height="120dp"
+                    android:layout_marginTop="8dp"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="Injected GIF Preview" />
+            </LinearLayout>
         </LinearLayout>
 
         <!-- Cloud Sync Card -->

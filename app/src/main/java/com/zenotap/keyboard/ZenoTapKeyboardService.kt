@@ -118,13 +118,12 @@ class ZenoTapKeyboardService : InputMethodService() {
     override fun onComputeInsets(outInsets: Insets?) {
         super.onComputeInsets(outInsets)
         if (outInsets == null) return
-        keyboardRootView?.let { root ->
-            val location = IntArray(2)
-            root.getLocationInWindow(location)
-            outInsets.contentTopInsets = location[1]
-            outInsets.visibleTopInsets = location[1]
-            outInsets.touchableInsets = Insets.TOUCHABLE_INSETS_CONTENT
-        }
+        val decorHeight = window?.window?.decorView?.height ?: 0
+        val rootHeight = keyboardRootView?.height ?: (275 * resources.displayMetrics.density).toInt()
+        val topInsets = if (decorHeight > rootHeight) decorHeight - rootHeight else 0
+        outInsets.contentTopInsets = topInsets
+        outInsets.visibleTopInsets = topInsets
+        outInsets.touchableInsets = Insets.TOUCHABLE_INSETS_VISIBLE
     }
 
     private fun bindKeyboardViews(root: View) {

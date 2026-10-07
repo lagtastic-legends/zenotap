@@ -4,9 +4,11 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
+import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -59,6 +61,33 @@ class MainActivity : AppCompatActivity() {
 
         val etTestInput = findViewById<EditText>(R.id.et_test_input)
         val btnPopupKeyboard = findViewById<Button>(R.id.btn_popup_keyboard)
+        val layoutTestResult = findViewById<View>(R.id.layout_test_result)
+        val tvTestResult = findViewById<TextView>(R.id.tv_test_result)
+        val ivTestPreview = findViewById<ImageView>(R.id.iv_test_preview)
+
+        // Enable Rich Content (GIF) Ingestion on the test field!
+        androidx.core.view.ViewCompat.setOnReceiveContentListener(
+            etTestInput,
+            arrayOf("image/gif", "image/*")
+        ) { _, payload ->
+            val split = payload.partition { item -> item.uri != null }
+            val uriContent = split.first
+            val remaining = split.second
+
+            if (uriContent != null) {
+                val clip = uriContent.clip
+                if (clip.itemCount > 0) {
+                    val uri = clip.getItemAt(0).uri
+                    if (uri != null) {
+                        layoutTestResult.visibility = View.VISIBLE
+                        tvTestResult.text = "🎉 Successfully received & injected GIF!"
+                        GifThumbnailLoader.loadMediaFromUri(this, uri, ivTestPreview)
+                        Toast.makeText(this, "🎉 GIF Received Successfully!", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            remaining
+        }
 
         btnPopupKeyboard.setOnClickListener {
             val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
@@ -74,7 +103,7 @@ class MainActivity : AppCompatActivity() {
                 imm?.showInputMethodPicker()
             } else {
                 etTestInput.requestFocus()
-                imm?.showSoftInput(etTestInput, InputMethodManager.SHOW_FORCED)
+                imm?.showSoftInput(etTestInput, InputMethodManager.SHOW_IMPLICIT)
             }
         }
 

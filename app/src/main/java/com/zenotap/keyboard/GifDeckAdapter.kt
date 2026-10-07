@@ -90,20 +90,11 @@ class GifDeckAdapter(
             // Load media with live looping animation
             GifThumbnailLoader.loadMedia(file, ivThumb)
 
-            // Tactile touch scale animation
-            cardRoot.setOnTouchListener { v, event ->
-                when (event.action) {
-                    MotionEvent.ACTION_DOWN -> {
-                        v.animate().scaleX(0.95f).scaleY(0.95f).setDuration(80).start()
-                    }
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(120).start()
-                    }
-                }
-                false
-            }
-
+            // Tactile touch scale animation & click dispatch
             cardRoot.setOnClickListener {
+                cardRoot.animate().scaleX(0.92f).scaleY(0.92f).setDuration(60).withEndAction {
+                    cardRoot.animate().scaleX(1.0f).scaleY(1.0f).setDuration(100).start()
+                }.start()
                 onItemClick(file)
             }
 
