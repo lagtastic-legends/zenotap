@@ -1,46 +1,70 @@
 package com.zenotap.keyboard
 
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.card.MaterialCardView
 import java.io.File
-import java.util.Locale
 
 /**
  * GifDeckAdapter
  *
- * RecyclerView adapter for binding GIF cards in the ZenoTap keyboard deck.
+ * High-performance RecyclerView adapter for binding live animated reaction cards
+ * with tactile touch feedback, tag labeling, and real-time category filtering.
  */
 class GifDeckAdapter(
     private val onItemClick: (File) -> Unit,
     private val onItemLongClick: ((File) -> Unit)? = null
 ) : RecyclerView.Adapter<GifDeckAdapter.GifViewHolder>() {
 
-    private val items = mutableListOf<File>()
+    private val allItems = mutableListOf<File>()
+    private val displayedItems = mutableListOf<File>()
+    private var activeCategory: String = "All"
 
-    fun submitList(newItems: List<File>) {
+    fun setMasterList(files: List<File>) {
+        allItems.clear()
+        allItems.addAll(files)
+        applyFilter()
+    }
+
+    fun setCategory(category: String) {
+        if (activeCategory == category) return
+        activeCategory = category
+        applyFilter()
+    }
+
+    private fun applyFilter() {
+        val filtered = if (activeCategory == "All") {
+            allItems
+        } else {
+            allItems.filter { file ->
+                DeckStorageManager.getCategoryForFile(file).equals(activeCategory, ignoreCase = true)
+            }
+        }
+
         val diffCallback = object : DiffUtil.Callback() {
-            override fun getOldListSize(): Int = items.size
-            override fun getNewListSize(): Int = newItems.size
+            override fun getOldListSize(): Int = displayedItems.size
+            override fun getNewListSize(): Int = filtered.size
 
-            override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
-                return items[oldItemPosition].absolutePath == newItems[newItemPosition].absolutePath
+            override fun areItemsTheSame(oldPos: Int, newPos: Int): Boolean {
+                return displayedItems[oldPos].absolutePath == filtered[newPos].absolutePath
             }
 
-            override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
-                val oldFile = items[oldItemPosition]
-                val newFile = newItems[newItemPosition]
+            override fun areContentsTheSame(oldPos: Int, newPos: Int): Boolean {
+                val oldFile = displayedItems[oldPos]
+                val newFile = filtered[newPos]
                 return oldFile.lastModified() == newFile.lastModified() && oldFile.length() == newFile.length()
             }
         }
 
         val diffResult = DiffUtil.calculateDiff(diffCallback)
-        items.clear()
-        items.addAll(newItems)
+        displayedItems.clear()
+        displayedItems.addAll(filtered)
         diffResult.dispatchUpdatesTo(this)
     }
 
@@ -50,37 +74,42 @@ class GifDeckAdapter(
     }
 
     override fun onBindViewHolder(holder: GifViewHolder, position: Int) {
-        holder.bind(items[position])
+        holder.bind(displayedItems[position])
     }
 
-    override fun getItemCount(): Int = items.size
+    override fun getItemCount(): Int = displayedItems.size
 
     inner class GifViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val cardRoot: MaterialCardView = itemView.findViewById(R.id.card_gif_root)
         private val ivThumb: ImageView = itemView.findViewById(R.id.iv_gif_thumb)
-        private val tvName: TextView = itemView.findViewById(R.id.tv_gif_name)
-        private val tvSize: TextView = itemView.findViewById(R.id.tv_gif_size)
+        private val tvTag: TextView = itemView.findViewById(R.id.tv_gif_tag)
 
         fun bind(file: File) {
-            tvName.text = file.nameWithoutExtension.replace('_', ' ')
-            tvSize.text = formatFileSize(file.length())
+            tvTag.text = DeckStorageManager.getDisplayTitleForFile(file)
 
-            GifThumbnailLoader.loadThumbnail(file, ivThumb)
+            // Load media with live looping animation
+            GifThumbnailLoader.loadMedia(file, ivThumb)
 
-            itemView.setOnClickListener {
+            // Tactile touch scale animation
+            cardRoot.setOnTouchListener { v, event ->
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        v.animate().scaleX(0.95f).scaleY(0.95f).setDuration(80).start()
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(120).start()
+                    }
+                }
+                false
+            }
+
+            cardRoot.setOnClickListener {
                 onItemClick(file)
             }
 
-            itemView.setOnLongClickListener {
+            cardRoot.setOnLongClickListener {
                 onItemLongClick?.invoke(file)
                 true
-            }
-        }
-
-        private fun formatFileSize(bytes: Long): String {
-            return when {
-                bytes >= 1024 * 1024 -> String.format(Locale.US, "%.1fMB", bytes / (1024f * 1024f))
-                bytes >= 1024 -> String.format(Locale.US, "%dKB", bytes / 1024)
-                else -> "${bytes}B"
             }
         }
     }

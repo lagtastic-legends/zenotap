@@ -3,6 +3,8 @@ package com.zenotap.keyboard.sync
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import com.zenotap.keyboard.DeckStorageManager
 import org.json.JSONObject
 import java.io.BufferedInputStream
@@ -156,6 +158,19 @@ object ZenoTapSyncClient {
             Result.success(downloadedCount)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    /**
+     * Runs syncDeck on a background thread and posts the result to the main thread.
+     */
+    fun syncDeckAsync(context: Context, onComplete: ((Result<Int>) -> Unit)? = null) {
+        val handler = Handler(Looper.getMainLooper())
+        kotlin.concurrent.thread(start = true) {
+            val res = syncDeck(context)
+            handler.post {
+                onComplete?.invoke(res)
+            }
         }
     }
 

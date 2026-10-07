@@ -10,7 +10,8 @@ import java.io.FileOutputStream
  * DeckStorageManager
  *
  * Manages the internal sandbox storage for ZenoTap GIFs,
- * pre-seeds bundled reactions, and dispatches in-process broadcast updates.
+ * pre-seeds bundled reactions, auto-upgrades legacy placeholders,
+ * and dispatches in-process broadcast updates.
  */
 object DeckStorageManager {
 
@@ -18,19 +19,12 @@ object DeckStorageManager {
     const val DIRECTORY_NAME = "zenotap_deck"
     const val ACTION_DECK_UPDATED = "com.zenotap.keyboard.ACTION_DECK_UPDATED"
 
-    // Valid minimal 1x1 Transparent GIF89a binary stream
-    private val MINIMAL_GIF_BYTES = byteArrayOf(
-        0x47, 0x49, 0x46, 0x38, 0x39, 0x61, // "GIF89a"
-        0x01, 0x00, 0x01, 0x00,             // 1 x 1 px width/height
-        0x80.toByte(), 0x00, 0x00,          // Global Color Table flag
-        0x00, 0x00, 0x00,                   // Color 0: RGB(0,0,0)
-        0xFF.toByte(), 0xFF.toByte(), 0xFF.toByte(), // Color 1: RGB(255,255,255)
-        0x21, 0xF9.toByte(), 0x04,          // Graphic Control Extension
-        0x01, 0x00, 0x00, 0x00, 0x00,       // Transparent index 0
-        0x2C, 0x00, 0x00, 0x00, 0x00,       // Image Descriptor
-        0x01, 0x00, 0x01, 0x00, 0x00,       // 1x1
-        0x02, 0x02, 0x44, 0x01, 0x00,       // LZW Raster Data
-        0x3B                                // GIF Trailer
+    val STARTER_NAMES = listOf(
+        "zenotap_fire.gif",
+        "zenotap_hype.gif",
+        "zenotap_vibe.gif",
+        "zenotap_lol.gif",
+        "zenotap_love.gif"
     )
 
     fun getDeckDirectory(context: Context): File {
@@ -51,25 +45,53 @@ object DeckStorageManager {
     }
 
     fun ensureStarterPack(context: Context) {
-        val current = getDeckFiles(context)
-        if (current.isEmpty()) {
-            val starterNames = listOf("zenotap_fire.gif", "zenotap_hype.gif", "zenotap_vibe.gif")
-            val dir = getDeckDirectory(context)
-            for (name in starterNames) {
-                val file = File(dir, name)
-                if (!file.exists()) {
-                    try {
-                        context.assets.open("bundled_gifs/$name").use { input ->
-                            FileOutputStream(file).use { output ->
-                                input.copyTo(output)
-                            }
+        val dir = getDeckDirectory(context)
+        var updated = false
+
+        for (name in STARTER_NAMES) {
+            val file = File(dir, name)
+            // Replace if missing OR if it is a legacy corrupt/tiny placeholder (< 1000 bytes)
+            if (!file.exists() || file.length() < 1000) {
+                try {
+                    context.assets.open("bundled_gifs/$name").use { input ->
+                        FileOutputStream(file).use { output ->
+                            input.copyTo(output)
                         }
-                    } catch (e: Exception) {
-                        FileOutputStream(file).use { it.write(MINIMAL_GIF_BYTES) }
                     }
+                    updated = true
+                    Log.i(TAG, "Installed/Upgraded starter GIF: $name (${file.length()} bytes)")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed installing starter GIF: $name", e)
                 }
             }
+        }
+
+        if (updated) {
             notifyDeckUpdated(context)
+        }
+    }
+
+    fun getCategoryForFile(file: File): String {
+        val name = file.nameWithoutExtension.lowercase()
+        return when {
+            name.contains("fire") -> "Fire"
+            name.contains("hype") -> "Hype"
+            name.contains("vibe") -> "Vibe"
+            name.contains("lol") || name.contains("laugh") || name.contains("meme") -> "LOL"
+            name.contains("love") || name.contains("heart") -> "Love"
+            else -> "Custom"
+        }
+    }
+
+    fun getDisplayTitleForFile(file: File): String {
+        val name = file.nameWithoutExtension.lowercase()
+        return when {
+            name.contains("fire") -> "🔥 FIRE"
+            name.contains("hype") -> "⚡ HYPE"
+            name.contains("vibe") -> "✨ VIBE"
+            name.contains("lol") -> "😂 LOL"
+            name.contains("love") -> "❤️ LOVE"
+            else -> file.nameWithoutExtension.replace('_', ' ').replace('-', ' ').uppercase()
         }
     }
 

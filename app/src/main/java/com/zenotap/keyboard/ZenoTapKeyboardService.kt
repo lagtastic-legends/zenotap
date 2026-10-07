@@ -11,6 +11,7 @@ import android.inputmethodservice.InputMethodService
 import android.net.Uri
 import android.os.Build
 import android.util.Log
+import android.view.HapticFeedbackConstants
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
@@ -19,7 +20,6 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.TextView
-import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.view.inputmethod.EditorInfoCompat
@@ -27,12 +27,15 @@ import androidx.core.view.inputmethod.InputConnectionCompat
 import androidx.core.view.inputmethod.InputContentInfoCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.zenotap.keyboard.sync.ZenoTapSyncClient
 import java.io.File
 
 /**
  * ZenoTapKeyboardService
  *
  * Dedicated Android InputMethodService (IME) for 1-tap rich media & GIF injection.
+ * Engineered with Obsidian Cyber aesthetic, live animated playback,
+ * category filtering, and subtle feedback toasts.
  */
 class ZenoTapKeyboardService : InputMethodService() {
 
@@ -43,18 +46,23 @@ class ZenoTapKeyboardService : InputMethodService() {
     }
 
     private var keyboardRootView: View? = null
-    private var statusTextView: TextView? = null
-    private var richContentBadge: TextView? = null
-    private var commitResultTextView: TextView? = null
-    private var deckTitleTextView: TextView? = null
     private var rvGifDeck: RecyclerView? = null
     private var layoutEmptyDeck: View? = null
     private var gifAdapter: GifDeckAdapter? = null
+    private var feedbackToast: TextView? = null
 
     private var currentEditorInfo: EditorInfo? = null
     private var isRichContentSupportedByHost: Boolean = false
 
     private val deckGifs = mutableListOf<File>()
+    private var activeFilterChip: TextView? = null
+    private val allFilterChips = mutableListOf<TextView>()
+
+    private val hideToastRunnable = Runnable {
+        feedbackToast?.animate()?.alpha(0f)?.setDuration(200)?.withEndAction {
+            feedbackToast?.visibility = View.GONE
+        }?.start()
+    }
 
     private val deckUpdateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -68,7 +76,7 @@ class ZenoTapKeyboardService : InputMethodService() {
         super.onCreate()
         Log.i(TAG, "ZenoTapKeyboardService created.")
 
-        // Ensure starter reactions exist
+        // Ensure starter reactions exist and auto-upgrade legacy placeholders
         DeckStorageManager.ensureStarterPack(this)
 
         val filter = IntentFilter(DeckStorageManager.ACTION_DECK_UPDATED)
@@ -120,25 +128,24 @@ class ZenoTapKeyboardService : InputMethodService() {
     }
 
     private fun bindKeyboardViews(root: View) {
-        statusTextView = root.findViewById(R.id.tv_keyboard_status)
-        richContentBadge = root.findViewById(R.id.tv_rich_content_badge)
-        commitResultTextView = root.findViewById(R.id.tv_commit_result)
-        deckTitleTextView = root.findViewById(R.id.tv_deck_title)
         rvGifDeck = root.findViewById(R.id.rv_gif_deck)
         layoutEmptyDeck = root.findViewById(R.id.layout_empty_deck)
+        feedbackToast = root.findViewById(R.id.tv_feedback_toast)
 
+        val btnSyncDeck = root.findViewById<ImageButton>(R.id.btn_sync_deck)
         val btnSwitchIme = root.findViewById<ImageButton>(R.id.btn_switch_ime)
-        val btnSwitchInput = root.findViewById<Button>(R.id.btn_switch_input)
         val btnClose = root.findViewById<ImageButton>(R.id.btn_close_keyboard)
-        val btnOpenApp = root.findViewById<Button>(R.id.btn_open_app)
-        val btnCreateSample = root.findViewById<Button>(R.id.btn_create_sample)
+        val btnManageDeck = root.findViewById<Button>(R.id.btn_manage_deck)
+        val btnSwitchInput = root.findViewById<Button>(R.id.btn_switch_input)
+        val btnResetStarter = root.findViewById<Button>(R.id.btn_create_sample)
 
         gifAdapter = GifDeckAdapter(
             onItemClick = { file ->
+                keyboardRootView?.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                 commitGif(file, description = file.nameWithoutExtension)
             },
             onItemLongClick = { file ->
-                Toast.makeText(this@ZenoTapKeyboardService, "Selected: ${file.name}", Toast.LENGTH_SHORT).show()
+                showFeedbackToast(DeckStorageManager.getDisplayTitleForFile(file), isSuccess = true)
             }
         )
 
@@ -148,6 +155,34 @@ class ZenoTapKeyboardService : InputMethodService() {
             setHasFixedSize(true)
         }
 
+        // Setup Category Filter Chips
+        allFilterChips.clear()
+        val chipAll = root.findViewById<TextView>(R.id.chip_all)
+        val chipFire = root.findViewById<TextView>(R.id.chip_fire)
+        val chipHype = root.findViewById<TextView>(R.id.chip_hype)
+        val chipVibe = root.findViewById<TextView>(R.id.chip_vibe)
+        val chipLol = root.findViewById<TextView>(R.id.chip_lol)
+        val chipLove = root.findViewById<TextView>(R.id.chip_love)
+
+        val chipsWithCategories = listOf(
+            chipAll to "All",
+            chipFire to "Fire",
+            chipHype to "Hype",
+            chipVibe to "Vibe",
+            chipLol to "LOL",
+            chipLove to "Love"
+        )
+
+        allFilterChips.addAll(chipsWithCategories.map { it.first })
+        activeFilterChip = chipAll
+
+        for ((chip, category) in chipsWithCategories) {
+            chip.setOnClickListener {
+                selectCategory(chip, category)
+            }
+        }
+
+        // Action Buttons
         val switchAction = View.OnClickListener {
             switchToNextOrPicker()
         }
@@ -159,17 +194,51 @@ class ZenoTapKeyboardService : InputMethodService() {
             requestHideSelf(0)
         }
 
-        btnOpenApp?.setOnClickListener {
+        btnManageDeck?.setOnClickListener {
             val intent = Intent(this, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
             }
             startActivity(intent)
         }
 
-        btnCreateSample?.setOnClickListener {
+        btnSyncDeck?.setOnClickListener {
+            btnSyncDeck.animate().rotationBy(360f).setDuration(600).start()
+            showFeedbackToast("🔄 Syncing with ZenoDeck...", isSuccess = true)
+            ZenoTapSyncClient.syncDeckAsync(this) { result ->
+                result.onSuccess { count ->
+                    showFeedbackToast("✓ Synced $count new reactions! 🚀", isSuccess = true)
+                    refreshDeckFiles()
+                }.onFailure { err ->
+                    showFeedbackToast(err.message ?: "Sync failed", isSuccess = false)
+                }
+            }
+        }
+
+        btnResetStarter?.setOnClickListener {
             DeckStorageManager.ensureStarterPack(this)
             refreshDeckFiles()
+            showFeedbackToast("✨ Starter reactions restored", isSuccess = true)
         }
+    }
+
+    private fun selectCategory(selectedChip: TextView, category: String) {
+        activeFilterChip = selectedChip
+        val activeBg = ContextCompat.getDrawable(this, R.drawable.bg_chip_active)
+        val inactiveBg = ContextCompat.getDrawable(this, R.drawable.bg_chip_inactive)
+        val activeColor = ContextCompat.getColor(this, R.color.pill_active_text)
+        val inactiveColor = ContextCompat.getColor(this, R.color.pill_inactive_text)
+
+        for (chip in allFilterChips) {
+            if (chip == selectedChip) {
+                chip.background = activeBg
+                chip.setTextColor(activeColor)
+            } else {
+                chip.background = inactiveBg
+                chip.setTextColor(inactiveColor)
+            }
+        }
+
+        gifAdapter?.setCategory(category)
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
@@ -178,18 +247,8 @@ class ZenoTapKeyboardService : InputMethodService() {
 
         refreshDeckFiles()
 
-        if (info == null) {
-            updateHostCapabilitiesDisplay("Unknown Host", supported = false, emptyMime = true)
-            return
-        }
-
-        val targetPackage = info.packageName ?: "Host App"
-        val supportedMimes = EditorInfoCompat.getContentMimeTypes(info)
+        val supportedMimes = if (info != null) EditorInfoCompat.getContentMimeTypes(info) else emptyArray()
         isRichContentSupportedByHost = isMimeSupported(supportedMimes, MIME_TYPE_GIF)
-
-        Log.d(TAG, "Host package: $targetPackage | richContent: $isRichContentSupportedByHost")
-        updateHostCapabilitiesDisplay(targetPackage, isRichContentSupportedByHost, supportedMimes.isEmpty())
-        updateCommitResultDisplay("Ready for media injection", isSuccess = null)
     }
 
     fun refreshDeckFiles(): List<File> {
@@ -199,7 +258,6 @@ class ZenoTapKeyboardService : InputMethodService() {
         deckGifs.addAll(files)
 
         val count = deckGifs.size
-        deckTitleTextView?.text = "⚡ ZenoTap Deck ($count)"
 
         if (count == 0) {
             rvGifDeck?.visibility = View.GONE
@@ -207,7 +265,7 @@ class ZenoTapKeyboardService : InputMethodService() {
         } else {
             rvGifDeck?.visibility = View.VISIBLE
             layoutEmptyDeck?.visibility = View.GONE
-            gifAdapter?.submitList(deckGifs.toList())
+            gifAdapter?.setMasterList(deckGifs.toList())
         }
 
         return deckGifs.toList()
@@ -227,7 +285,7 @@ class ZenoTapKeyboardService : InputMethodService() {
         description: String = "ZenoTap GIF"
     ): Boolean {
         if (!gifFile.exists() || !gifFile.canRead()) {
-            updateCommitResultDisplay("Error reading file", isSuccess = false)
+            showFeedbackToast("Unable to read GIF file", isSuccess = false)
             return false
         }
 
@@ -235,15 +293,14 @@ class ZenoTapKeyboardService : InputMethodService() {
         val editorInfo: EditorInfo? = currentEditorInfo ?: currentInputEditorInfo
 
         if (inputConnection == null || editorInfo == null) {
-            updateCommitResultDisplay("No active input target", isSuccess = false)
+            executeFallback(gifFile, null, linkUri)
             return false
         }
 
-        val targetPackage = editorInfo.packageName ?: "Host App"
         val supportedMimes = EditorInfoCompat.getContentMimeTypes(editorInfo)
 
         if (!isMimeSupported(supportedMimes, MIME_TYPE_GIF)) {
-            Log.w(TAG, "Host ($targetPackage) lacks GIF support. Triggering fallback.")
+            Log.w(TAG, "Host lacks native GIF insertion support. Triggering fallback.")
             executeFallback(gifFile, null, linkUri)
             return false
         }
@@ -278,7 +335,7 @@ class ZenoTapKeyboardService : InputMethodService() {
             )
 
             if (success) {
-                updateCommitResultDisplay("✓ Injected into $targetPackage", isSuccess = true)
+                showFeedbackToast("✓ Sent to chat! 🚀", isSuccess = true)
                 true
             } else {
                 executeFallback(gifFile, contentUri, linkUri)
@@ -313,40 +370,26 @@ class ZenoTapKeyboardService : InputMethodService() {
                 currentInputConnection?.commitText(linkUri.toString(), 1)
             }
 
-            Toast.makeText(this, "GIF copied to clipboard — paste into chat!", Toast.LENGTH_SHORT).show()
-            updateCommitResultDisplay("⚠ Incompatible app: Copied to clipboard", isSuccess = false)
+            showFeedbackToast("📋 Copied to clipboard — paste into chat!", isSuccess = false)
         } catch (e: Exception) {
             Log.e(TAG, "Fallback failed", e)
-            updateCommitResultDisplay("Fallback error: ${e.message}", isSuccess = false)
+            showFeedbackToast("Could not copy media", isSuccess = false)
         }
     }
 
-    private fun updateHostCapabilitiesDisplay(hostPackage: String, supported: Boolean, emptyMime: Boolean) {
-        statusTextView?.text = when {
-            supported -> "Target: $hostPackage (GIF Supported)"
-            emptyMime -> "Target: $hostPackage (Standard Text Field)"
-            else -> "Target: $hostPackage (Rich Content Restricted)"
-        }
-
-        richContentBadge?.apply {
-            if (supported) {
-                text = "⚡ CommitContent"
-                setTextColor(0xFF10B981.toInt())
-            } else {
-                text = "⚠️ Fallback"
-                setTextColor(0xFFF59E0B.toInt())
-            }
-        }
-    }
-
-    private fun updateCommitResultDisplay(text: String, isSuccess: Boolean?) {
-        commitResultTextView?.apply {
-            this.text = text
-            when (isSuccess) {
-                true -> setTextColor(0xFF10B981.toInt())
-                false -> setTextColor(0xFFF87171.toInt())
-                null -> setTextColor(0xFF9CA3AF.toInt())
-            }
+    private fun showFeedbackToast(message: String, isSuccess: Boolean) {
+        feedbackToast?.let { toast ->
+            toast.removeCallbacks(hideToastRunnable)
+            toast.text = message
+            val textColor = ContextCompat.getColor(
+                this,
+                if (isSuccess) R.color.accent_emerald else R.color.accent_amber
+            )
+            toast.setTextColor(textColor)
+            toast.alpha = 0f
+            toast.visibility = View.VISIBLE
+            toast.animate().alpha(1f).setDuration(160).start()
+            toast.postDelayed(hideToastRunnable, 2200)
         }
     }
 
@@ -381,13 +424,10 @@ class ZenoTapKeyboardService : InputMethodService() {
         }
         GifThumbnailLoader.clearCache()
         keyboardRootView = null
-        statusTextView = null
-        richContentBadge = null
-        commitResultTextView = null
-        deckTitleTextView = null
         rvGifDeck = null
         layoutEmptyDeck = null
         gifAdapter = null
+        feedbackToast = null
         currentEditorInfo = null
         deckGifs.clear()
         super.onDestroy()

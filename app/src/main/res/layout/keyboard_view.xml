@@ -2,95 +2,179 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/keyboard_root"
     android:layout_width="match_parent"
-    android:layout_height="270dp"
-    android:minHeight="260dp"
+    android:layout_height="275dp"
+    android:minHeight="265dp"
     android:orientation="vertical"
-    android:background="#121214"
+    android:background="@color/bg_obsidian"
     android:padding="6dp">
 
-    <!-- Top Bar: Header & Controls -->
+    <!-- Top Toolbar: Brand & Category Filters & Actions -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="36dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingBottom="4dp">
 
-        <LinearLayout
+        <!-- Sleek Brand Pill -->
+        <TextView
+            android:id="@+id/tv_brand_logo"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:background="@drawable/bg_action_pill"
+            android:gravity="center"
+            android:paddingHorizontal="8dp"
+            android:text="⚡ ZenoTap"
+            android:textColor="@color/text_primary"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <!-- Horizontal Scrollable Category Filter Chips -->
+        <HorizontalScrollView
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="32dp"
             android:layout_weight="1"
-            android:orientation="vertical">
+            android:layout_marginHorizontal="6dp"
+            android:scrollbars="none">
 
             <LinearLayout
+                android:id="@+id/layout_filter_chips"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
                 <TextView
-                    android:id="@+id/tv_deck_title"
+                    android:id="@+id/chip_all"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="⚡ ZenoTap GIF Deck"
-                    android:textColor="#F4F4F5"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
+                    android:layout_height="26dp"
+                    android:background="@drawable/bg_chip_active"
+                    android:gravity="center"
+                    android:paddingHorizontal="10dp"
+                    android:text="All"
+                    android:textColor="@color/pill_active_text"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true" />
 
                 <TextView
-                    android:id="@+id/tv_rich_content_badge"
+                    android:id="@+id/chip_fire"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:background="#27272A"
-                    android:paddingHorizontal="6dp"
-                    android:paddingVertical="2dp"
-                    android:text="CommitContent"
-                    android:textColor="#10B981"
-                    android:textSize="9sp"
-                    android:textStyle="bold" />
-            </LinearLayout>
+                    android:layout_height="26dp"
+                    android:layout_marginStart="4dp"
+                    android:background="@drawable/bg_chip_inactive"
+                    android:gravity="center"
+                    android:paddingHorizontal="10dp"
+                    android:text="🔥 Fire"
+                    android:textColor="@color/pill_inactive_text"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true" />
 
-            <TextView
-                android:id="@+id/tv_keyboard_status"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Detecting host app capabilities..."
-                android:textColor="#A1A1AA"
-                android:textSize="9sp"
-                android:ellipsize="end"
-                android:maxLines="1" />
-        </LinearLayout>
+                <TextView
+                    android:id="@+id/chip_hype"
+                    android:layout_width="wrap_content"
+                    android:layout_height="26dp"
+                    android:layout_marginStart="4dp"
+                    android:background="@drawable/bg_chip_inactive"
+                    android:gravity="center"
+                    android:paddingHorizontal="10dp"
+                    android:text="⚡ Hype"
+                    android:textColor="@color/pill_inactive_text"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <TextView
+                    android:id="@+id/chip_vibe"
+                    android:layout_width="wrap_content"
+                    android:layout_height="26dp"
+                    android:layout_marginStart="4dp"
+                    android:background="@drawable/bg_chip_inactive"
+                    android:gravity="center"
+                    android:paddingHorizontal="10dp"
+                    android:text="✨ Vibe"
+                    android:textColor="@color/pill_inactive_text"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <TextView
+                    android:id="@+id/chip_lol"
+                    android:layout_width="wrap_content"
+                    android:layout_height="26dp"
+                    android:layout_marginStart="4dp"
+                    android:background="@drawable/bg_chip_inactive"
+                    android:gravity="center"
+                    android:paddingHorizontal="10dp"
+                    android:text="😂 LOL"
+                    android:textColor="@color/pill_inactive_text"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <TextView
+                    android:id="@+id/chip_love"
+                    android:layout_width="wrap_content"
+                    android:layout_height="26dp"
+                    android:layout_marginStart="4dp"
+                    android:background="@drawable/bg_chip_inactive"
+                    android:gravity="center"
+                    android:paddingHorizontal="10dp"
+                    android:text="❤️ Love"
+                    android:textColor="@color/pill_inactive_text"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+            </LinearLayout>
+        </HorizontalScrollView>
+
+        <!-- Cloud Sync Button -->
+        <ImageButton
+            android:id="@+id/btn_sync_deck"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Sync Deck"
+            android:src="@drawable/ic_sync_deck" />
 
         <!-- Switch IME Button -->
         <ImageButton
             android:id="@+id/btn_switch_ime"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_marginStart="2dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Switch Keyboard"
-            android:src="@android:drawable/ic_menu_agenda"
-            android:tint="#D4D4D8" />
+            android:src="@drawable/ic_keyboard_switch" />
 
         <!-- Close Keyboard Button -->
         <ImageButton
             android:id="@+id/btn_close_keyboard"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_marginStart="2dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="Close Keyboard"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"
-            android:tint="#A1A1AA" />
+            android:src="@drawable/ic_close_keyboard" />
+
     </LinearLayout>
 
-    <!-- Main Content Frame: RecyclerView Grid & Empty State -->
+    <!-- Main Content Frame: RecyclerView Grid, Empty State & Floating Toast -->
     <FrameLayout
         android:id="@+id/media_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:minHeight="170dp"
         android:layout_weight="1"
-        android:background="#18181B">
+        android:background="@color/bg_obsidian">
 
         <!-- RecyclerView for Media Cards -->
         <androidx.recyclerview.widget.RecyclerView
@@ -98,9 +182,11 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:scrollbars="vertical"
+            android:clipToPadding="false"
+            android:paddingBottom="2dp"
             android:visibility="visible" />
 
-        <!-- Empty State View -->
+        <!-- Illustrated Empty State View -->
         <LinearLayout
             android:id="@+id/layout_empty_deck"
             android:layout_width="match_parent"
@@ -113,79 +199,90 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="🎨 No GIFs in Deck"
-                android:textColor="#F4F4F5"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+                android:text="✨"
+                android:textSize="28sp" />
 
             <TextView
-                android:id="@+id/tv_deck_subtitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:gravity="center"
-                android:text="Add GIF animations to your ZenoTap deck to inject with 1-tap."
-                android:textColor="#71717A"
-                android:textSize="11sp" />
+                android:text="No Reactions in Category"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp"
+                android:textStyle="bold" />
 
             <Button
                 android:id="@+id/btn_create_sample"
                 style="?android:attr/borderlessButtonStyle"
                 android:layout_width="wrap_content"
-                android:layout_height="32dp"
+                android:layout_height="30dp"
                 android:layout_marginTop="10dp"
-                android:background="#059669"
-                android:text="🚀 Add Sample Reaction"
+                android:background="@drawable/bg_chip_active"
+                android:text="✨ Reset Starter Reactions"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"
-                android:textSize="11sp"
-                android:paddingHorizontal="12dp" />
+                android:textSize="10sp"
+                android:paddingHorizontal="14dp" />
         </LinearLayout>
+
+        <!-- Floating Feedback Toast (Sleek Toast Overlay) -->
+        <TextView
+            android:id="@+id/tv_feedback_toast"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|center_horizontal"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/bg_feedback_toast"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="7dp"
+            android:text="✓ Sent to chat! 🚀"
+            android:textColor="@color/accent_emerald"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:elevation="6dp"
+            android:visibility="gone" />
+
     </FrameLayout>
 
-    <!-- Bottom Action & Telemetry Strip -->
+    <!-- Bottom Utility Footer -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="32dp"
-        android:layout_marginTop="4dp"
+        android:layout_height="30dp"
+        android:layout_marginTop="3dp"
         android:orientation="horizontal"
         android:gravity="center_vertical">
 
+        <!-- Open App / Manage Deck -->
         <Button
-            android:id="@+id/btn_open_app"
+            android:id="@+id/btn_manage_deck"
             style="?android:attr/borderlessButtonStyle"
             android:layout_width="wrap_content"
-            android:layout_height="28dp"
-            android:background="#27272A"
-            android:text="Open ZenoTap"
+            android:layout_height="26dp"
+            android:background="@drawable/bg_action_pill"
+            android:text="⚙️ Manage Deck"
             android:textAllCaps="false"
-            android:textColor="#E4E4E7"
+            android:textColor="@color/text_muted"
             android:textSize="10sp"
             android:paddingHorizontal="10dp" />
 
-        <TextView
-            android:id="@+id/tv_commit_result"
+        <View
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="8dp"
-            android:text="Ready for media injection"
-            android:textColor="#9CA3AF"
-            android:textSize="9sp"
-            android:singleLine="true"
-            android:ellipsize="end" />
+            android:layout_height="1dp"
+            android:layout_weight="1" />
 
+        <!-- Return to QWERTY typing keyboard -->
         <Button
             android:id="@+id/btn_switch_input"
             style="?android:attr/borderlessButtonStyle"
             android:layout_width="wrap_content"
-            android:layout_height="28dp"
-            android:background="#27272A"
-            android:text="⌨ Switch IME"
+            android:layout_height="26dp"
+            android:background="@drawable/bg_action_pill"
+            android:text="⌨️ QWERTY"
             android:textAllCaps="false"
-            android:textColor="#A1A1AA"
+            android:textColor="@color/text_primary"
             android:textSize="10sp"
-            android:paddingHorizontal="10dp" />
+            android:paddingHorizontal="12dp" />
+
     </LinearLayout>
 
 </LinearLayout>
