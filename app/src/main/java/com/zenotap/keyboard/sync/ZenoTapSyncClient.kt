@@ -46,7 +46,7 @@ object ZenoTapSyncClient {
      */
     fun pairDevice(context: Context, serverUrl: String, pairCode: String): Result<String> {
         val cleanUrl = serverUrl.trimEnd('/')
-        val endpoint = "$cleanUrl/api/zenotap/v1/device/pair"
+        val endpoint = "$cleanUrl/api/zenotap/v1/device/pair/"
 
         return try {
             val url = URL(endpoint)
@@ -106,7 +106,7 @@ object ZenoTapSyncClient {
             ?: return Result.failure(IllegalStateException("Device is not paired to a ZenoDeck account."))
         val serverUrl = prefs.getString(KEY_SERVER_URL, DEFAULT_SERVER_URL) ?: DEFAULT_SERVER_URL
 
-        val endpoint = "${serverUrl.trimEnd('/')}/api/zenotap/v1/sync"
+        val endpoint = "${serverUrl.trimEnd('/')}/api/zenotap/v1/sync/"
 
         return try {
             val url = URL(endpoint)
