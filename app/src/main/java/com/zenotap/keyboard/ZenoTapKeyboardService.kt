@@ -12,6 +12,7 @@ import android.net.Uri
 import android.os.Build
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
@@ -86,10 +87,36 @@ class ZenoTapKeyboardService : InputMethodService() {
 
     override fun onCreateInputView(): View {
         val view = layoutInflater.inflate(R.layout.keyboard_view, null)
+        val heightPx = (275 * resources.displayMetrics.density).toInt()
+        view.layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            heightPx
+        )
         keyboardRootView = view
         bindKeyboardViews(view)
         refreshDeckFiles()
         return view
+    }
+
+    override fun onEvaluateInputViewShown(): Boolean {
+        super.onEvaluateInputViewShown()
+        return true
+    }
+
+    override fun onEvaluateFullscreenMode(): Boolean {
+        return false
+    }
+
+    override fun onComputeInsets(outInsets: Insets?) {
+        super.onComputeInsets(outInsets)
+        if (outInsets == null) return
+        keyboardRootView?.let { root ->
+            val location = IntArray(2)
+            root.getLocationInWindow(location)
+            outInsets.contentTopInsets = location[1]
+            outInsets.visibleTopInsets = location[1]
+            outInsets.touchableInsets = Insets.TOUCHABLE_INSETS_CONTENT
+        }
     }
 
     private fun bindKeyboardViews(root: View) {

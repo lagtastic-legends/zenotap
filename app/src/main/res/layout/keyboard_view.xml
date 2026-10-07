@@ -3,6 +3,7 @@
     android:id="@+id/keyboard_root"
     android:layout_width="match_parent"
     android:layout_height="270dp"
+    android:minHeight="260dp"
     android:orientation="vertical"
     android:background="#121214"
     android:padding="6dp">
@@ -87,6 +88,7 @@
         android:id="@+id/media_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:minHeight="170dp"
         android:layout_weight="1"
         android:background="#18181B">
 

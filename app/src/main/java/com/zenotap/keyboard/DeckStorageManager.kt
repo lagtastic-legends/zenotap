@@ -58,7 +58,15 @@ object DeckStorageManager {
             for (name in starterNames) {
                 val file = File(dir, name)
                 if (!file.exists()) {
-                    FileOutputStream(file).use { it.write(MINIMAL_GIF_BYTES) }
+                    try {
+                        context.assets.open("bundled_gifs/$name").use { input ->
+                            FileOutputStream(file).use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        FileOutputStream(file).use { it.write(MINIMAL_GIF_BYTES) }
+                    }
                 }
             }
             notifyDeckUpdated(context)

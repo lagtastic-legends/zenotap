@@ -57,6 +57,35 @@ class MainActivity : AppCompatActivity() {
             checkStatus()
         }
 
+        val etTestInput = findViewById<EditText>(R.id.et_test_input)
+        val btnPopupKeyboard = findViewById<Button>(R.id.btn_popup_keyboard)
+
+        btnPopupKeyboard.setOnClickListener {
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            val currentIme = Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD) ?: ""
+            val isSelected = currentIme.contains(packageName)
+
+            if (!isSelected) {
+                Toast.makeText(
+                    this,
+                    "ZenoTap is not selected as your keyboard yet. Please select it in the dialog:",
+                    Toast.LENGTH_LONG
+                ).show()
+                imm?.showInputMethodPicker()
+            } else {
+                etTestInput.requestFocus()
+                imm?.showSoftInput(etTestInput, InputMethodManager.SHOW_FORCED)
+            }
+        }
+
+        etTestInput.setOnClickListener {
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            val currentIme = Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD) ?: ""
+            if (!currentIme.contains(packageName)) {
+                imm?.showInputMethodPicker()
+            }
+        }
+
         btnPairZenoDeck.setOnClickListener {
             showPairDialog()
         }
