@@ -2,6 +2,8 @@
 <resources>
     <style name="Theme.ZenoTap" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="colorPrimary">@color/accent_emerald</item>
+        <item name="colorSecondary">@color/accent_violet</item>
+        <item name="colorSurface">@color/card_bg</item>
         <item name="android:statusBarColor">@color/bg_dark</item>
         <item name="android:windowBackground">@color/bg_dark</item>
     </style>

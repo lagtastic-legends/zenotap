@@ -13,6 +13,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.util.LruCache
+import android.view.View
 import android.widget.ImageView
 import java.io.File
 import java.util.concurrent.Executors
@@ -20,23 +21,22 @@ import java.util.concurrent.Executors
 /**
  * GifThumbnailLoader
  *
- * High-performance, zero-dependency animated GIF & media loader
- * with native hardware-accelerated playback (AnimatedImageDrawable on API 28+),
- * automatic BitmapFactory fallback, and memory-bounded LRU caching.
+ * High-performance, zero-crash media and GIF loader engineered for Android IMEs.
+ * - Hardware-accelerated animated playback via ImageDecoder on API 28+
+ * - Fast first-frame Bitmap LRU caching for instant flicker-free card binding
+ * - Multi-view safe animation lifecycle with window attachment listeners
+ * - Resilient BitmapFactory fallback for older devices or malformed streams
  */
 object GifThumbnailLoader {
 
     private const val TAG = "GifThumbnailLoader"
 
-    // 20MB cache capacity
-    private val maxCacheSize = (20 * 1024 * 1024).toInt()
+    // 16MB cache for static thumbnail bitmaps
+    private val maxCacheSize = (16 * 1024 * 1024).toInt()
 
-    private val memoryCache: LruCache<String, Drawable> = object : LruCache<String, Drawable>(maxCacheSize) {
-        override fun sizeOf(key: String, drawable: Drawable): Int {
-            return when (drawable) {
-                is BitmapDrawable -> drawable.bitmap?.byteCount ?: 1024
-                else -> 200 * 200 * 4 // Approximation for animated drawables
-            }
+    private val thumbnailCache: LruCache<String, Bitmap> = object : LruCache<String, Bitmap>(maxCacheSize) {
+        override fun sizeOf(key: String, bitmap: Bitmap): Int {
+            return bitmap.byteCount
         }
     }
 
@@ -46,28 +46,32 @@ object GifThumbnailLoader {
     fun loadMedia(file: File, imageView: ImageView) {
         val cacheKey = "${file.absolutePath}_${file.lastModified()}"
 
-        // Check memory cache first
-        val cached = memoryCache.get(cacheKey)
-        if (cached != null) {
-            imageView.setImageDrawable(cached)
-            if (cached is Animatable && !cached.isRunning) {
-                cached.start()
-            }
-            return
+        // Check if static thumbnail is already cached for instant visual feedback
+        val cachedThumb = thumbnailCache.get(cacheKey)
+        if (cachedThumb != null) {
+            imageView.setImageBitmap(cachedThumb)
+        } else {
+            imageView.setImageDrawable(null)
         }
-
-        imageView.setImageDrawable(null)
         imageView.tag = cacheKey
 
         executor.execute {
-            val drawable = decodeMedia(file, imageView)
+            val context = imageView.context.applicationContext
+            val drawable = decodeMedia(file, context)
+
             if (drawable != null) {
-                memoryCache.put(cacheKey, drawable)
+                // If it's a static BitmapDrawable, cache its bitmap
+                if (drawable is BitmapDrawable && drawable.bitmap != null) {
+                    thumbnailCache.put(cacheKey, drawable.bitmap)
+                }
+
                 mainHandler.post {
                     if (imageView.tag == cacheKey) {
-                        imageView.setImageDrawable(drawable)
-                        if (drawable is Animatable && !drawable.isRunning) {
-                            drawable.start()
+                        try {
+                            imageView.setImageDrawable(drawable)
+                            startAnimationSafely(drawable, imageView, cacheKey)
+                        } catch (t: Throwable) {
+                            Log.w(TAG, "Error binding drawable to view", t)
                         }
                     }
                 }
@@ -79,27 +83,24 @@ object GifThumbnailLoader {
 
     fun loadMediaFromUri(context: Context, uri: Uri, imageView: ImageView) {
         val cacheKey = uri.toString()
-        val cached = memoryCache.get(cacheKey)
-        if (cached != null) {
-            imageView.setImageDrawable(cached)
-            if (cached is Animatable && !cached.isRunning) {
-                cached.start()
-            }
-            return
+        val cachedThumb = thumbnailCache.get(cacheKey)
+        if (cachedThumb != null) {
+            imageView.setImageBitmap(cachedThumb)
+        } else {
+            imageView.setImageDrawable(null)
         }
-
-        imageView.setImageDrawable(null)
         imageView.tag = cacheKey
 
         executor.execute {
+            val appContext = context.applicationContext
             val drawable = try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    val source = ImageDecoder.createSource(context.contentResolver, uri)
+                    val source = ImageDecoder.createSource(appContext.contentResolver, uri)
                     ImageDecoder.decodeDrawable(source)
                 } else {
-                    context.contentResolver.openInputStream(uri)?.use { stream ->
+                    appContext.contentResolver.openInputStream(uri)?.use { stream ->
                         val bitmap = BitmapFactory.decodeStream(stream)
-                        if (bitmap != null) BitmapDrawable(context.resources, bitmap) else null
+                        if (bitmap != null) BitmapDrawable(appContext.resources, bitmap) else null
                     }
                 }
             } catch (e: Throwable) {
@@ -108,12 +109,16 @@ object GifThumbnailLoader {
             }
 
             if (drawable != null) {
-                memoryCache.put(cacheKey, drawable)
+                if (drawable is BitmapDrawable && drawable.bitmap != null) {
+                    thumbnailCache.put(cacheKey, drawable.bitmap)
+                }
                 mainHandler.post {
                     if (imageView.tag == cacheKey) {
-                        imageView.setImageDrawable(drawable)
-                        if (drawable is Animatable && !drawable.isRunning) {
-                            drawable.start()
+                        try {
+                            imageView.setImageDrawable(drawable)
+                            startAnimationSafely(drawable, imageView, cacheKey)
+                        } catch (t: Throwable) {
+                            Log.w(TAG, "Error setting URI drawable", t)
                         }
                     }
                 }
@@ -121,19 +126,16 @@ object GifThumbnailLoader {
         }
     }
 
-    private fun decodeMedia(file: File, targetView: ImageView): Drawable? {
-        if (!file.exists() || !file.canRead()) return null
+    private fun decodeMedia(file: File, context: Context): Drawable? {
+        if (!file.exists() || !file.canRead() || file.length() == 0L) return null
 
-        // Try ImageDecoder on Android P+
+        // Try ImageDecoder on Android P+ for live animated playback
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             try {
                 val source = ImageDecoder.createSource(file)
-                val drawable = ImageDecoder.decodeDrawable(source) { decoder, _, _ ->
-                    decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-                }
-                return drawable
+                return ImageDecoder.decodeDrawable(source)
             } catch (t: Throwable) {
-                Log.w(TAG, "ImageDecoder failed for ${file.name}, trying BitmapFactory fallback", t)
+                Log.w(TAG, "ImageDecoder failed for ${file.name}, trying BitmapFactory: ${t.message}")
             }
         }
 
@@ -141,17 +143,49 @@ object GifThumbnailLoader {
         return try {
             val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeFile(file.absolutePath, options)
-            options.inSampleSize = calculateInSampleSize(options.outWidth, options.outHeight, 200, 200)
+            options.inSampleSize = calculateInSampleSize(options.outWidth, options.outHeight, 240, 240)
             options.inJustDecodeBounds = false
             options.inPreferredConfig = Bitmap.Config.RGB_565
 
             val bitmap = BitmapFactory.decodeFile(file.absolutePath, options)
             if (bitmap != null) {
-                BitmapDrawable(targetView.resources, bitmap)
+                BitmapDrawable(context.resources, bitmap)
             } else null
         } catch (e: Throwable) {
             Log.e(TAG, "BitmapFactory fallback also failed for ${file.name}", e)
             null
+        }
+    }
+
+    private fun startAnimationSafely(drawable: Drawable, view: ImageView, expectedTag: String) {
+        if (drawable !is Animatable) return
+        try {
+            if (view.isAttachedToWindow) {
+                if (!drawable.isRunning) {
+                    drawable.start()
+                }
+            } else {
+                view.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                    override fun onViewAttachedToWindow(v: View) {
+                        try {
+                            if (view.tag == expectedTag && view.drawable == drawable && !drawable.isRunning) {
+                                drawable.start()
+                            }
+                        } catch (ignored: Throwable) {}
+                        view.removeOnAttachStateChangeListener(this)
+                    }
+
+                    override fun onViewDetachedFromWindow(v: View) {
+                        try {
+                            if (drawable.isRunning) {
+                                drawable.stop()
+                            }
+                        } catch (ignored: Throwable) {}
+                    }
+                })
+            }
+        } catch (e: Throwable) {
+            Log.w(TAG, "Safe anim start failed", e)
         }
     }
 
@@ -168,6 +202,6 @@ object GifThumbnailLoader {
     }
 
     fun clearCache() {
-        memoryCache.evictAll()
+        thumbnailCache.evictAll()
     }
 }

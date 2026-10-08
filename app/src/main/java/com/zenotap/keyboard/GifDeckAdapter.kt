@@ -1,21 +1,22 @@
 package com.zenotap.keyboard
 
+import android.graphics.drawable.Animatable
 import android.view.LayoutInflater
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.appcompat.view.ContextThemeWrapper
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.card.MaterialCardView
 import java.io.File
 
 /**
  * GifDeckAdapter
  *
  * High-performance RecyclerView adapter for binding live animated reaction cards
- * with tactile touch feedback, tag labeling, and real-time category filtering.
+ * with tactile touch feedback, tag labeling, real-time category filtering,
+ * and robust lifecycle detachment/recycling safeguards.
  */
 class GifDeckAdapter(
     private val onItemClick: (File) -> Unit,
@@ -69,7 +70,8 @@ class GifDeckAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): GifViewHolder {
-        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_gif_cell, parent, false)
+        val themedContext = ContextThemeWrapper(parent.context, R.style.Theme_ZenoTap)
+        val view = LayoutInflater.from(themedContext).inflate(R.layout.item_gif_cell, parent, false)
         return GifViewHolder(view)
     }
 
@@ -77,17 +79,22 @@ class GifDeckAdapter(
         holder.bind(displayedItems[position])
     }
 
+    override fun onViewRecycled(holder: GifViewHolder) {
+        super.onViewRecycled(holder)
+        holder.unbind()
+    }
+
     override fun getItemCount(): Int = displayedItems.size
 
     inner class GifViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        private val cardRoot: MaterialCardView = itemView.findViewById(R.id.card_gif_root)
+        private val cardRoot: View = itemView.findViewById(R.id.card_gif_root)
         private val ivThumb: ImageView = itemView.findViewById(R.id.iv_gif_thumb)
         private val tvTag: TextView = itemView.findViewById(R.id.tv_gif_tag)
 
         fun bind(file: File) {
             tvTag.text = DeckStorageManager.getDisplayTitleForFile(file)
 
-            // Load media with live looping animation
+            // Load media with live looping animation & safe fallback
             GifThumbnailLoader.loadMedia(file, ivThumb)
 
             // Tactile touch scale animation & click dispatch
@@ -102,6 +109,13 @@ class GifDeckAdapter(
                 onItemLongClick?.invoke(file)
                 true
             }
+        }
+
+        fun unbind() {
+            try {
+                (ivThumb.drawable as? Animatable)?.stop()
+                ivThumb.setImageDrawable(null)
+            } catch (ignored: Throwable) {}
         }
     }
 }

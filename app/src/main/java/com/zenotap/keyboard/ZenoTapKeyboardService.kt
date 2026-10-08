@@ -7,11 +7,14 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Color
 import android.inputmethodservice.InputMethodService
 import android.net.Uri
 import android.os.Build
 import android.util.Log
+import android.view.Gravity
 import android.view.HapticFeedbackConstants
+import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
@@ -19,7 +22,9 @@ import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.ImageButton
+import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.appcompat.view.ContextThemeWrapper
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.view.inputmethod.EditorInfoCompat
@@ -33,9 +38,9 @@ import java.io.File
 /**
  * ZenoTapKeyboardService
  *
- * Dedicated Android InputMethodService (IME) for 1-tap rich media & GIF injection.
- * Engineered with Obsidian Cyber aesthetic, live animated playback,
- * category filtering, and subtle feedback toasts.
+ * Ultra-stable, high-performance Android InputMethodService (IME) for 1-tap rich media & GIF injection.
+ * Engineered with Obsidian Cyber aesthetic, live animated playback, category filtering,
+ * and robust multi-layer crash-proofing across all vendor Android ROMs.
  */
 class ZenoTapKeyboardService : InputMethodService() {
 
@@ -67,17 +72,27 @@ class ZenoTapKeyboardService : InputMethodService() {
     private val deckUpdateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             Log.d(TAG, "Deck update broadcast received. Refreshing grid.")
-            refreshDeckFiles()
+            try {
+                refreshDeckFiles()
+            } catch (e: Throwable) {
+                Log.e(TAG, "Error handling deck update broadcast", e)
+            }
         }
     }
     private var isReceiverRegistered = false
 
     override fun onCreate() {
+        // Enforce application theme on Service base context
+        setTheme(R.style.Theme_ZenoTap)
         super.onCreate()
         Log.i(TAG, "ZenoTapKeyboardService created.")
 
         // Ensure starter reactions exist and auto-upgrade legacy placeholders
-        DeckStorageManager.ensureStarterPack(this)
+        try {
+            DeckStorageManager.ensureStarterPack(this)
+        } catch (e: Throwable) {
+            Log.e(TAG, "Error ensuring starter pack", e)
+        }
 
         val filter = IntentFilter(DeckStorageManager.ACTION_DECK_UPDATED)
         try {
@@ -94,16 +109,61 @@ class ZenoTapKeyboardService : InputMethodService() {
     }
 
     override fun onCreateInputView(): View {
-        val view = layoutInflater.inflate(R.layout.keyboard_view, null)
-        val heightPx = (275 * resources.displayMetrics.density).toInt()
-        view.layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            heightPx
-        )
-        keyboardRootView = view
-        bindKeyboardViews(view)
-        refreshDeckFiles()
-        return view
+        return try {
+            val themedContext = ContextThemeWrapper(this, R.style.Theme_ZenoTap)
+            val themedInflater = LayoutInflater.from(themedContext)
+            val view = themedInflater.inflate(R.layout.keyboard_view, null)
+            val heightPx = (275 * resources.displayMetrics.density).toInt()
+            view.layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                heightPx
+            )
+            keyboardRootView = view
+            bindKeyboardViews(view, themedContext)
+            refreshDeckFiles()
+            view
+        } catch (e: Throwable) {
+            Log.e(TAG, "Critical error inflating keyboard view. Activating emergency layout.", e)
+            createEmergencyFallbackView()
+        }
+    }
+
+    private fun createEmergencyFallbackView(): View {
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setBackgroundColor(Color.parseColor("#0F1015"))
+            val pad = (16 * resources.displayMetrics.density).toInt()
+            setPadding(pad, pad, pad, pad)
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                (275 * resources.displayMetrics.density).toInt()
+            )
+        }
+
+        val tv = TextView(this).apply {
+            text = "⚡ ZenoTap Keyboard"
+            setTextColor(Color.WHITE)
+            textSize = 16f
+            gravity = Gravity.CENTER
+        }
+        val btnRetry = Button(this).apply {
+            text = "Reload Keyboard"
+            setOnClickListener {
+                setInputView(onCreateInputView())
+            }
+        }
+        val btnSwitch = Button(this).apply {
+            text = "Switch to QWERTY"
+            setOnClickListener {
+                switchToNextOrPicker()
+            }
+        }
+
+        layout.addView(tv)
+        layout.addView(btnRetry)
+        layout.addView(btnSwitch)
+        return layout
     }
 
     override fun onEvaluateInputViewShown(): Boolean {
@@ -118,15 +178,24 @@ class ZenoTapKeyboardService : InputMethodService() {
     override fun onComputeInsets(outInsets: Insets?) {
         super.onComputeInsets(outInsets)
         if (outInsets == null) return
-        val decorHeight = window?.window?.decorView?.height ?: 0
-        val rootHeight = keyboardRootView?.height ?: (275 * resources.displayMetrics.density).toInt()
-        val topInsets = if (decorHeight > rootHeight) decorHeight - rootHeight else 0
-        outInsets.contentTopInsets = topInsets
-        outInsets.visibleTopInsets = topInsets
-        outInsets.touchableInsets = Insets.TOUCHABLE_INSETS_VISIBLE
+        try {
+            val root = keyboardRootView
+            if (root != null && root.isShown && root.height > 0) {
+                val loc = IntArray(2)
+                root.getLocationInWindow(loc)
+                val topY = loc[1]
+                if (topY > 0) {
+                    outInsets.contentTopInsets = topY
+                    outInsets.visibleTopInsets = topY
+                    outInsets.touchableInsets = Insets.TOUCHABLE_INSETS_CONTENT
+                }
+            }
+        } catch (e: Throwable) {
+            Log.w(TAG, "Safe onComputeInsets fallback", e)
+        }
     }
 
-    private fun bindKeyboardViews(root: View) {
+    private fun bindKeyboardViews(root: View, themedContext: Context) {
         rvGifDeck = root.findViewById(R.id.rv_gif_deck)
         layoutEmptyDeck = root.findViewById(R.id.layout_empty_deck)
         feedbackToast = root.findViewById(R.id.tv_feedback_toast)
@@ -149,7 +218,7 @@ class ZenoTapKeyboardService : InputMethodService() {
         )
 
         rvGifDeck?.apply {
-            layoutManager = GridLayoutManager(this@ZenoTapKeyboardService, 3)
+            layoutManager = GridLayoutManager(themedContext, 3)
             adapter = gifAdapter
             setHasFixedSize(true)
         }
@@ -163,13 +232,13 @@ class ZenoTapKeyboardService : InputMethodService() {
         val chipLol = root.findViewById<TextView>(R.id.chip_lol)
         val chipLove = root.findViewById<TextView>(R.id.chip_love)
 
-        val chipsWithCategories = listOf(
-            chipAll to "All",
-            chipFire to "Fire",
-            chipHype to "Hype",
-            chipVibe to "Vibe",
-            chipLol to "LOL",
-            chipLove to "Love"
+        val chipsWithCategories = listOfNotNull(
+            chipAll?.let { it to "All" },
+            chipFire?.let { it to "Fire" },
+            chipHype?.let { it to "Hype" },
+            chipVibe?.let { it to "Vibe" },
+            chipLol?.let { it to "LOL" },
+            chipLove?.let { it to "Love" }
         )
 
         allFilterChips.addAll(chipsWithCategories.map { it.first })
@@ -194,10 +263,14 @@ class ZenoTapKeyboardService : InputMethodService() {
         }
 
         btnManageDeck?.setOnClickListener {
-            val intent = Intent(this, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+            try {
+                val intent = Intent(this, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+                }
+                startActivity(intent)
+            } catch (e: Throwable) {
+                Log.e(TAG, "Failed launching MainActivity", e)
             }
-            startActivity(intent)
         }
 
         btnSyncDeck?.setOnClickListener {
@@ -214,9 +287,13 @@ class ZenoTapKeyboardService : InputMethodService() {
         }
 
         btnResetStarter?.setOnClickListener {
-            DeckStorageManager.ensureStarterPack(this)
-            refreshDeckFiles()
-            showFeedbackToast("✨ Starter reactions restored", isSuccess = true)
+            try {
+                DeckStorageManager.ensureStarterPack(this)
+                refreshDeckFiles()
+                showFeedbackToast("✨ Starter reactions restored", isSuccess = true)
+            } catch (e: Throwable) {
+                Log.e(TAG, "Error restoring starter pack", e)
+            }
         }
     }
 
@@ -244,7 +321,11 @@ class ZenoTapKeyboardService : InputMethodService() {
         super.onStartInputView(info, restarting)
         currentEditorInfo = info
 
-        refreshDeckFiles()
+        try {
+            refreshDeckFiles()
+        } catch (e: Throwable) {
+            Log.e(TAG, "Error refreshing deck on start input", e)
+        }
 
         val supportedMimes = if (info != null) EditorInfoCompat.getContentMimeTypes(info) else emptyArray()
         isRichContentSupportedByHost = isMimeSupported(supportedMimes, MIME_TYPE_GIF)
@@ -386,29 +467,35 @@ class ZenoTapKeyboardService : InputMethodService() {
 
     private fun showFeedbackToast(message: String, isSuccess: Boolean) {
         feedbackToast?.let { toast ->
-            toast.removeCallbacks(hideToastRunnable)
-            toast.text = message
-            val textColor = ContextCompat.getColor(
-                this,
-                if (isSuccess) R.color.accent_emerald else R.color.accent_amber
-            )
-            toast.setTextColor(textColor)
-            toast.alpha = 0f
-            toast.visibility = View.VISIBLE
-            toast.animate().alpha(1f).setDuration(160).start()
-            toast.postDelayed(hideToastRunnable, 2200)
+            try {
+                toast.removeCallbacks(hideToastRunnable)
+                toast.text = message
+                val textColor = ContextCompat.getColor(
+                    this,
+                    if (isSuccess) R.color.accent_emerald else R.color.accent_amber
+                )
+                toast.setTextColor(textColor)
+                toast.alpha = 0f
+                toast.visibility = View.VISIBLE
+                toast.animate().alpha(1f).setDuration(160).start()
+                toast.postDelayed(hideToastRunnable, 2200)
+            } catch (ignored: Throwable) {}
         }
     }
 
     private fun switchToNextOrPicker() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            if (!switchToPreviousInputMethod()) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                if (!switchToPreviousInputMethod()) {
+                    val imm = getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager
+                    imm?.showInputMethodPicker()
+                }
+            } else {
                 val imm = getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager
                 imm?.showInputMethodPicker()
             }
-        } else {
-            val imm = getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager
-            imm?.showInputMethodPicker()
+        } catch (e: Throwable) {
+            Log.e(TAG, "Error switching IME", e)
         }
     }
 
