@@ -21,7 +21,14 @@ object ZenoTapSyncClient {
     private const val KEY_SERVER_URL = "server_url"
     private const val KEY_DEVICE_NAME = "device_name"
 
-    const val DEFAULT_SERVER_URL = "http://10.0.2.2:3000"
+    fun getDefaultServerUrl(): String {
+        val isEmulator = Build.FINGERPRINT.startsWith("generic") ||
+                Build.MODEL.contains("google_sdk") ||
+                Build.MODEL.contains("Emulator") ||
+                Build.HARDWARE.contains("goldfish") ||
+                Build.HARDWARE.contains("ranchu")
+        return if (isEmulator) "http://10.0.2.2:3000" else "http://192.168.1.19:3000"
+    }
 
     fun isPaired(context: Context): Boolean {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -30,7 +37,7 @@ object ZenoTapSyncClient {
 
     fun getServerUrl(context: Context): String {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return prefs.getString(KEY_SERVER_URL, DEFAULT_SERVER_URL) ?: DEFAULT_SERVER_URL
+        return prefs.getString(KEY_SERVER_URL, null) ?: getDefaultServerUrl()
     }
 
     fun getDeviceName(context: Context): String {
@@ -106,7 +113,7 @@ object ZenoTapSyncClient {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val syncToken = prefs.getString(KEY_SYNC_TOKEN, null)
             ?: return Result.failure(IllegalStateException("Device is not paired to a ZenoDeck account."))
-        val serverUrl = prefs.getString(KEY_SERVER_URL, DEFAULT_SERVER_URL) ?: DEFAULT_SERVER_URL
+        val serverUrl = prefs.getString(KEY_SERVER_URL, null) ?: getDefaultServerUrl()
 
         val endpoint = "${serverUrl.trimEnd('/')}/api/zenotap/v1/sync/"
 

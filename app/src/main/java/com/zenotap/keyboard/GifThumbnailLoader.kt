@@ -131,7 +131,7 @@ object GifThumbnailLoader {
                 val drawable = ImageDecoder.decodeDrawable(source) { decoder, _, _ ->
                     decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
                 }
-                if (drawable != null) return drawable
+                return drawable
             } catch (t: Throwable) {
                 Log.w(TAG, "ImageDecoder failed for ${file.name}, trying BitmapFactory fallback", t)
             }

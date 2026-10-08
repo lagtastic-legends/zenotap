@@ -316,6 +316,14 @@ class ZenoTapKeyboardService : InputMethodService() {
             return false
         }
 
+        try {
+            editorInfo.packageName?.let { hostPkg ->
+                grantUriPermission(hostPkg, contentUri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "grantUriPermission warning", e)
+        }
+
         val clipDescription = ClipDescription(description, arrayOf(MIME_TYPE_GIF))
         val inputContentInfo = InputContentInfoCompat(contentUri, clipDescription, linkUri)
 

@@ -188,18 +188,55 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val input = EditText(this).apply {
-            hint = "6-digit code (e.g. 849201)"
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER
-            setPadding(48, 32, 48, 32)
+        val container = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(48, 24, 48, 16)
         }
+
+        val tvServerLabel = TextView(this).apply {
+            text = "ZenoDeck Server URL:"
+            textSize = 11f
+            setTextColor(0xFF94A3B8.toInt())
+        }
+
+        val etServerUrl = EditText(this).apply {
+            hint = "http://192.168.1.19:3000"
+            setText(ZenoTapSyncClient.getServerUrl(this@MainActivity))
+            inputType = android.text.InputType.TYPE_TEXT_VARIATION_URI
+            textSize = 13f
+        }
+
+        val tvCodeLabel = TextView(this).apply {
+            text = "6-Digit Pairing PIN:"
+            textSize = 11f
+            setTextColor(0xFF94A3B8.toInt())
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = 16 }
+        }
+
+        val input = EditText(this).apply {
+            hint = "e.g. 849201"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            textSize = 16f
+        }
+
+        container.addView(tvServerLabel)
+        container.addView(etServerUrl)
+        container.addView(tvCodeLabel)
+        container.addView(input)
 
         AlertDialog.Builder(this)
             .setTitle("Link ZenoDeck Account")
-            .setMessage("Enter the 6-digit pairing code shown in your ZenoDeck Web App:")
-            .setView(input)
+            .setMessage("Confirm your ZenoDeck server address and enter the 6-digit pairing code:")
+            .setView(container)
             .setPositiveButton("Link Device") { _, _ ->
                 val code = input.text.toString().trim()
+                val serverUrl = etServerUrl.text.toString().trim().ifBlank {
+                    ZenoTapSyncClient.getServerUrl(this)
+                }
+
                 if (code.length != 6) {
                     Toast.makeText(this, "Please enter a valid 6-digit code", Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
@@ -207,7 +244,7 @@ class MainActivity : AppCompatActivity() {
 
                 Toast.makeText(this, "Pairing device...", Toast.LENGTH_SHORT).show()
                 thread {
-                    val result = ZenoTapSyncClient.pairDevice(this, ZenoTapSyncClient.DEFAULT_SERVER_URL, code)
+                    val result = ZenoTapSyncClient.pairDevice(this, serverUrl, code)
                     runOnUiThread {
                         result.onSuccess {
                             Toast.makeText(this, "Successfully paired to ZenoDeck!", Toast.LENGTH_SHORT).show()
