@@ -8,164 +8,278 @@
     android:background="@color/bg_obsidian"
     android:padding="6dp">
 
-    <!-- Top Toolbar: Brand & Category Filters & Actions -->
-    <LinearLayout
+    <!-- Top Toolbar Container: Switches between Default Bar & Inline Search -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="36dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
         android:paddingBottom="4dp">
 
-        <!-- Sleek Brand Pill -->
-        <TextView
-            android:id="@+id/tv_brand_logo"
-            android:layout_width="wrap_content"
-            android:layout_height="28dp"
-            android:background="@drawable/bg_action_pill"
-            android:gravity="center"
-            android:paddingHorizontal="8dp"
-            android:text="⚡ ZenoTap"
-            android:textColor="@color/text_primary"
-            android:textSize="11sp"
-            android:textStyle="bold" />
+        <!-- Mode A: Default Navigation & Category Chips -->
+        <LinearLayout
+            android:id="@+id/layout_toolbar_default"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:visibility="visible">
 
-        <!-- Horizontal Scrollable Category Filter Chips -->
-        <HorizontalScrollView
-            android:layout_width="0dp"
-            android:layout_height="32dp"
-            android:layout_weight="1"
-            android:layout_marginHorizontal="6dp"
-            android:scrollbars="none">
-
-            <LinearLayout
-                android:id="@+id/layout_filter_chips"
+            <!-- Sleek Brand Pill -->
+            <TextView
+                android:id="@+id/tv_brand_logo"
                 android:layout_width="wrap_content"
-                android:layout_height="match_parent"
+                android:layout_height="28dp"
+                android:background="@drawable/bg_action_pill"
+                android:gravity="center"
+                android:paddingHorizontal="8dp"
+                android:text="⚡ ZenoTap"
+                android:textColor="@color/text_primary"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <!-- Horizontal Scrollable Category Filter Chips -->
+            <HorizontalScrollView
+                android:layout_width="0dp"
+                android:layout_height="32dp"
+                android:layout_weight="1"
+                android:layout_marginHorizontal="4dp"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:id="@+id/layout_filter_chips"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <!-- ⭐ Favorites Chip -->
+                    <TextView
+                        android:id="@+id/chip_favs"
+                        android:layout_width="wrap_content"
+                        android:layout_height="26dp"
+                        android:background="@drawable/bg_chip_inactive"
+                        android:gravity="center"
+                        android:paddingHorizontal="9dp"
+                        android:text="⭐ Favs"
+                        android:textColor="@color/pill_inactive_text"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                    <!-- 🕒 Recent Chip -->
+                    <TextView
+                        android:id="@+id/chip_recent"
+                        android:layout_width="wrap_content"
+                        android:layout_height="26dp"
+                        android:layout_marginStart="4dp"
+                        android:background="@drawable/bg_chip_inactive"
+                        android:gravity="center"
+                        android:paddingHorizontal="9dp"
+                        android:text="🕒 Recent"
+                        android:textColor="@color/pill_inactive_text"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                    <TextView
+                        android:id="@+id/chip_all"
+                        android:layout_width="wrap_content"
+                        android:layout_height="26dp"
+                        android:layout_marginStart="4dp"
+                        android:background="@drawable/bg_chip_active"
+                        android:gravity="center"
+                        android:paddingHorizontal="10dp"
+                        android:text="All"
+                        android:textColor="@color/pill_active_text"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                    <TextView
+                        android:id="@+id/chip_fire"
+                        android:layout_width="wrap_content"
+                        android:layout_height="26dp"
+                        android:layout_marginStart="4dp"
+                        android:background="@drawable/bg_chip_inactive"
+                        android:gravity="center"
+                        android:paddingHorizontal="9dp"
+                        android:text="🔥 Fire"
+                        android:textColor="@color/pill_inactive_text"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                    <TextView
+                        android:id="@+id/chip_hype"
+                        android:layout_width="wrap_content"
+                        android:layout_height="26dp"
+                        android:layout_marginStart="4dp"
+                        android:background="@drawable/bg_chip_inactive"
+                        android:gravity="center"
+                        android:paddingHorizontal="9dp"
+                        android:text="⚡ Hype"
+                        android:textColor="@color/pill_inactive_text"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                    <TextView
+                        android:id="@+id/chip_vibe"
+                        android:layout_width="wrap_content"
+                        android:layout_height="26dp"
+                        android:layout_marginStart="4dp"
+                        android:background="@drawable/bg_chip_inactive"
+                        android:gravity="center"
+                        android:paddingHorizontal="9dp"
+                        android:text="✨ Vibe"
+                        android:textColor="@color/pill_inactive_text"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                    <TextView
+                        android:id="@+id/chip_lol"
+                        android:layout_width="wrap_content"
+                        android:layout_height="26dp"
+                        android:layout_marginStart="4dp"
+                        android:background="@drawable/bg_chip_inactive"
+                        android:gravity="center"
+                        android:paddingHorizontal="9dp"
+                        android:text="😂 LOL"
+                        android:textColor="@color/pill_inactive_text"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                    <TextView
+                        android:id="@+id/chip_love"
+                        android:layout_width="wrap_content"
+                        android:layout_height="26dp"
+                        android:layout_marginStart="4dp"
+                        android:background="@drawable/bg_chip_inactive"
+                        android:gravity="center"
+                        android:paddingHorizontal="9dp"
+                        android:text="❤️ Love"
+                        android:textColor="@color/pill_inactive_text"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                </LinearLayout>
+            </HorizontalScrollView>
+
+            <!-- Search Toggle Button -->
+            <ImageButton
+                android:id="@+id/btn_toggle_search"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Search Reactions"
+                android:src="@drawable/ic_search" />
+
+            <!-- Cloud Sync Button -->
+            <ImageButton
+                android:id="@+id/btn_sync_deck"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="1dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Sync Deck"
+                android:src="@drawable/ic_sync_deck" />
+
+            <!-- Switch IME Button -->
+            <ImageButton
+                android:id="@+id/btn_switch_ime"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="1dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Switch Keyboard"
+                android:src="@drawable/ic_keyboard_switch" />
+
+            <!-- Close Keyboard Button -->
+            <ImageButton
+                android:id="@+id/btn_close_keyboard"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="1dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Close Keyboard"
+                android:src="@drawable/ic_close_keyboard" />
+
+        </LinearLayout>
+
+        <!-- Mode B: Inline Search Bar (Expands across full toolbar) -->
+        <LinearLayout
+            android:id="@+id/layout_toolbar_search"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:visibility="gone">
+
+            <!-- Back / Dismiss Search -->
+            <ImageButton
+                android:id="@+id/btn_close_search"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Close Search"
+                android:src="@drawable/ic_back_search" />
+
+            <!-- Search Field with Integrated Clear Button -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="30dp"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:background="@drawable/bg_search_bar"
                 android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:gravity="center_vertical"
+                android:paddingHorizontal="8dp">
 
-                <TextView
-                    android:id="@+id/chip_all"
-                    android:layout_width="wrap_content"
-                    android:layout_height="26dp"
-                    android:background="@drawable/bg_chip_active"
-                    android:gravity="center"
-                    android:paddingHorizontal="10dp"
-                    android:text="All"
-                    android:textColor="@color/pill_active_text"
-                    android:textSize="10sp"
-                    android:textStyle="bold"
-                    android:clickable="true"
-                    android:focusable="true" />
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/ic_search"
+                    android:contentDescription="Search Icon" />
 
-                <TextView
-                    android:id="@+id/chip_fire"
-                    android:layout_width="wrap_content"
-                    android:layout_height="26dp"
-                    android:layout_marginStart="4dp"
-                    android:background="@drawable/bg_chip_inactive"
-                    android:gravity="center"
-                    android:paddingHorizontal="10dp"
-                    android:text="🔥 Fire"
-                    android:textColor="@color/pill_inactive_text"
-                    android:textSize="10sp"
-                    android:textStyle="bold"
-                    android:clickable="true"
-                    android:focusable="true" />
+                <EditText
+                    android:id="@+id/et_search_reactions"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
+                    android:background="@null"
+                    android:hint="Search reactions or tags..."
+                    android:textColorHint="@color/text_muted"
+                    android:textColor="@color/text_primary"
+                    android:textSize="11sp"
+                    android:singleLine="true"
+                    android:imeOptions="actionDone"
+                    android:importantForAutofill="no" />
 
-                <TextView
-                    android:id="@+id/chip_hype"
-                    android:layout_width="wrap_content"
-                    android:layout_height="26dp"
-                    android:layout_marginStart="4dp"
-                    android:background="@drawable/bg_chip_inactive"
-                    android:gravity="center"
-                    android:paddingHorizontal="10dp"
-                    android:text="⚡ Hype"
-                    android:textColor="@color/pill_inactive_text"
-                    android:textSize="10sp"
-                    android:textStyle="bold"
-                    android:clickable="true"
-                    android:focusable="true" />
-
-                <TextView
-                    android:id="@+id/chip_vibe"
-                    android:layout_width="wrap_content"
-                    android:layout_height="26dp"
-                    android:layout_marginStart="4dp"
-                    android:background="@drawable/bg_chip_inactive"
-                    android:gravity="center"
-                    android:paddingHorizontal="10dp"
-                    android:text="✨ Vibe"
-                    android:textColor="@color/pill_inactive_text"
-                    android:textSize="10sp"
-                    android:textStyle="bold"
-                    android:clickable="true"
-                    android:focusable="true" />
-
-                <TextView
-                    android:id="@+id/chip_lol"
-                    android:layout_width="wrap_content"
-                    android:layout_height="26dp"
-                    android:layout_marginStart="4dp"
-                    android:background="@drawable/bg_chip_inactive"
-                    android:gravity="center"
-                    android:paddingHorizontal="10dp"
-                    android:text="😂 LOL"
-                    android:textColor="@color/pill_inactive_text"
-                    android:textSize="10sp"
-                    android:textStyle="bold"
-                    android:clickable="true"
-                    android:focusable="true" />
-
-                <TextView
-                    android:id="@+id/chip_love"
-                    android:layout_width="wrap_content"
-                    android:layout_height="26dp"
-                    android:layout_marginStart="4dp"
-                    android:background="@drawable/bg_chip_inactive"
-                    android:gravity="center"
-                    android:paddingHorizontal="10dp"
-                    android:text="❤️ Love"
-                    android:textColor="@color/pill_inactive_text"
-                    android:textSize="10sp"
-                    android:textStyle="bold"
-                    android:clickable="true"
-                    android:focusable="true" />
+                <ImageButton
+                    android:id="@+id/btn_clear_search"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Clear Search"
+                    android:src="@drawable/ic_clear_search"
+                    android:visibility="gone" />
 
             </LinearLayout>
-        </HorizontalScrollView>
 
-        <!-- Cloud Sync Button -->
-        <ImageButton
-            android:id="@+id/btn_sync_deck"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Sync Deck"
-            android:src="@drawable/ic_sync_deck" />
+        </LinearLayout>
 
-        <!-- Switch IME Button -->
-        <ImageButton
-            android:id="@+id/btn_switch_ime"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:layout_marginStart="2dp"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Switch Keyboard"
-            android:src="@drawable/ic_keyboard_switch" />
-
-        <!-- Close Keyboard Button -->
-        <ImageButton
-            android:id="@+id/btn_close_keyboard"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:layout_marginStart="2dp"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Close Keyboard"
-            android:src="@drawable/ic_close_keyboard" />
-
-    </LinearLayout>
+    </FrameLayout>
 
     <!-- Main Content Frame: RecyclerView Grid, Empty State & Floating Toast -->
     <FrameLayout

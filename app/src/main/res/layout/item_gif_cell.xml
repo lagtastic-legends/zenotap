@@ -32,6 +32,18 @@
             android:layout_height="match_parent"
             android:background="@drawable/bg_card_border" />
 
+        <!-- Favorite Star Badge -->
+        <ImageView
+            android:id="@+id/iv_fav_badge"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_gravity="top|end"
+            android:layout_marginTop="5dp"
+            android:layout_marginEnd="5dp"
+            android:src="@drawable/ic_star_filled"
+            android:contentDescription="Favorite Reaction"
+            android:visibility="gone" />
+
         <!-- Reaction Name Tag (Glassmorphic Pill) -->
         <TextView
             android:id="@+id/tv_gif_tag"

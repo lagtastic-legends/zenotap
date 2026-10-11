@@ -201,6 +201,14 @@ object GifThumbnailLoader {
         return inSampleSize.coerceAtLeast(1)
     }
 
+    fun getMimeType(file: File): String {
+        return if (file.name.endsWith(".webp", ignoreCase = true)) {
+            "image/webp"
+        } else {
+            "image/gif"
+        }
+    }
+
     fun clearCache() {
         thumbnailCache.evictAll()
     }

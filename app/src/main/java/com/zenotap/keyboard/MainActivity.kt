@@ -2,15 +2,20 @@ package com.zenotap.keyboard
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.zenotap.keyboard.sync.ZenoTapSyncClient
@@ -25,6 +30,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnPairZenoDeck: Button
     private lateinit var btnSyncNow: Button
 
+    private val galleryPickerLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            promptImportDetails(uri)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -38,6 +51,7 @@ class MainActivity : AppCompatActivity() {
         val btnSelectIme = findViewById<Button>(R.id.btn_select_ime)
         val btnRefresh = findViewById<Button>(R.id.btn_refresh_status)
         val btnAddSample = findViewById<Button>(R.id.btn_add_sample)
+        val btnImportGallery = findViewById<Button>(R.id.btn_import_gallery)
         btnPairZenoDeck = findViewById(R.id.btn_pair_zenodeck)
         btnSyncNow = findViewById(R.id.btn_sync_now)
 
@@ -57,6 +71,11 @@ class MainActivity : AppCompatActivity() {
         btnAddSample.setOnClickListener {
             DeckStorageManager.ensureStarterPack(this)
             checkStatus()
+            Toast.makeText(this, "✨ Starter reaction pack reset!", Toast.LENGTH_SHORT).show()
+        }
+
+        btnImportGallery?.setOnClickListener {
+            galleryPickerLauncher.launch("image/*")
         }
 
         val etTestInput = findViewById<EditText>(R.id.et_test_input)
@@ -65,10 +84,10 @@ class MainActivity : AppCompatActivity() {
         val tvTestResult = findViewById<TextView>(R.id.tv_test_result)
         val ivTestPreview = findViewById<ImageView>(R.id.iv_test_preview)
 
-        // Enable Rich Content (GIF) Ingestion on the test field!
+        // Enable Rich Content (GIF & WebP) Ingestion on the test field!
         androidx.core.view.ViewCompat.setOnReceiveContentListener(
             etTestInput,
-            arrayOf("image/gif", "image/*")
+            arrayOf("image/gif", "image/webp", "image/*")
         ) { _, payload ->
             val split = payload.partition { item -> item.uri != null }
             val uriContent = split.first
@@ -80,9 +99,9 @@ class MainActivity : AppCompatActivity() {
                     val uri = clip.getItemAt(0).uri
                     if (uri != null) {
                         layoutTestResult.visibility = View.VISIBLE
-                        tvTestResult.text = "🎉 Successfully received & injected GIF!"
+                        tvTestResult.text = "🎉 Successfully received & injected reaction!"
                         GifThumbnailLoader.loadMediaFromUri(this, uri, ivTestPreview)
-                        Toast.makeText(this, "🎉 GIF Received Successfully!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "🎉 Reaction Received Successfully!", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -159,82 +178,110 @@ class MainActivity : AppCompatActivity() {
         val isPaired = ZenoTapSyncClient.isPaired(this)
         if (isPaired) {
             val device = ZenoTapSyncClient.getDeviceName(this)
-            tvSyncStatus.text = "Linked"
+            tvSyncStatus.text = "✓ Linked to ZenoDeck"
             tvSyncStatus.setTextColor(0xFF10B981.toInt())
-            tvSyncDetails.text = "Linked to ZenoDeck cloud deck ($device). Sync token is secured."
+            tvSyncDetails.text = "Paired as: $device\nServer: ${ZenoTapSyncClient.getServerUrl(this)}"
             btnPairZenoDeck.text = "Unlink Account"
-            btnSyncNow.isEnabled = true
+            btnPairZenoDeck.setOnClickListener {
+                ZenoTapSyncClient.unpair(this)
+                checkStatus()
+                Toast.makeText(this, "Unlinked from ZenoDeck", Toast.LENGTH_SHORT).show()
+                btnPairZenoDeck.setOnClickListener { showPairDialog() }
+            }
         } else {
             tvSyncStatus.text = "Not Linked"
             tvSyncStatus.setTextColor(0xFFF59E0B.toInt())
-            tvSyncDetails.text = "Pair with ZenoDeck to automatically sync your custom reaction GIFs."
+            tvSyncDetails.text = "Pair with ZenoDeck to automatically sync your custom reactions."
             btnPairZenoDeck.text = "Link Account (6-Digit Code)"
-            btnSyncNow.isEnabled = false
+            btnPairZenoDeck.setOnClickListener { showPairDialog() }
         }
     }
 
-    private fun showPairDialog() {
-        if (ZenoTapSyncClient.isPaired(this)) {
-            AlertDialog.Builder(this)
-                .setTitle("Unlink ZenoDeck Account?")
-                .setMessage("This will remove your sync token from this device. Local GIFs will remain saved.")
-                .setPositiveButton("Unlink") { _, _ ->
-                    ZenoTapSyncClient.unpair(this)
-                    checkStatus()
-                    Toast.makeText(this, "Device unlinked", Toast.LENGTH_SHORT).show()
-                }
-                .setNegativeButton("Cancel", null)
-                .show()
-            return
+    private fun promptImportDetails(uri: Uri) {
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 24, 48, 12)
         }
 
-        val container = android.widget.LinearLayout(this).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            setPadding(48, 24, 48, 16)
+        val etTitle = EditText(this).apply {
+            hint = "Reaction Title (e.g. victory_dance)"
+        }
+        layout.addView(etTitle)
+
+        val tvCategoryLabel = TextView(this).apply {
+            text = "Category:"
+            setPadding(0, 20, 0, 8)
+        }
+        layout.addView(tvCategoryLabel)
+
+        val spinnerCategory = Spinner(this)
+        val categories = arrayOf("Fire", "Hype", "Vibe", "LOL", "Love", "Custom")
+        spinnerCategory.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, categories)
+        layout.addView(spinnerCategory)
+
+        AlertDialog.Builder(this)
+            .setTitle("➕ Add Reaction to Deck")
+            .setView(layout)
+            .setPositiveButton("Import") { _, _ ->
+                val title = etTitle.text.toString().trim()
+                val category = spinnerCategory.selectedItem?.toString() ?: "Custom"
+
+                thread {
+                    val imported = DeckStorageManager.importMediaFromUri(this, uri, title, category)
+                    runOnUiThread {
+                        if (imported != null) {
+                            Toast.makeText(this, "🎉 Added ${imported.name} to ZenoTap deck!", Toast.LENGTH_SHORT).show()
+                            checkStatus()
+                        } else {
+                            Toast.makeText(this, "Failed to import media file", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showPairDialog() {
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 24, 48, 12)
         }
 
         val tvServerLabel = TextView(this).apply {
-            text = "ZenoDeck Server URL:"
-            textSize = 11f
-            setTextColor(0xFF94A3B8.toInt())
+            text = "Server URL (Wi-Fi or Cloud endpoint):"
         }
+        layout.addView(tvServerLabel)
 
         val etServerUrl = EditText(this).apply {
-            hint = "http://192.168.1.19:3000"
             setText(ZenoTapSyncClient.getServerUrl(this@MainActivity))
-            inputType = android.text.InputType.TYPE_TEXT_VARIATION_URI
-            textSize = 13f
+            hint = "http://192.168.1.x:3000"
         }
+        layout.addView(etServerUrl)
 
         val tvCodeLabel = TextView(this).apply {
-            text = "6-Digit Pairing PIN:"
-            textSize = 11f
-            setTextColor(0xFF94A3B8.toInt())
-            layoutParams = android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = 16 }
+            text = "6-Digit Pairing Code from ZenoDeck:"
+            setPadding(0, 24, 0, 0)
         }
+        layout.addView(tvCodeLabel)
 
-        val input = EditText(this).apply {
-            hint = "e.g. 849201"
+        val etCode = EditText(this).apply {
+            hint = "123456"
             inputType = android.text.InputType.TYPE_CLASS_NUMBER
-            textSize = 16f
         }
-
-        container.addView(tvServerLabel)
-        container.addView(etServerUrl)
-        container.addView(tvCodeLabel)
-        container.addView(input)
+        layout.addView(etCode)
 
         AlertDialog.Builder(this)
-            .setTitle("Link ZenoDeck Account")
-            .setMessage("Confirm your ZenoDeck server address and enter the 6-digit pairing code:")
-            .setView(container)
-            .setPositiveButton("Link Device") { _, _ ->
-                val code = input.text.toString().trim()
-                val serverUrl = etServerUrl.text.toString().trim().ifBlank {
-                    ZenoTapSyncClient.getServerUrl(this)
+            .setTitle("🔗 Link with ZenoDeck")
+            .setMessage("Open ZenoDeck Web -> ZenoTap Workstation to generate your 6-digit pair code.")
+            .setView(layout)
+            .setPositiveButton("Pair") { _, _ ->
+                val serverUrl = etServerUrl.text.toString().trim()
+                val code = etCode.text.toString().trim()
+
+                if (serverUrl.isBlank()) {
+                    Toast.makeText(this, "Please enter a valid server URL", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
                 }
 
                 if (code.length != 6) {
@@ -266,7 +313,7 @@ class MainActivity : AppCompatActivity() {
             val result = ZenoTapSyncClient.syncDeck(this)
             runOnUiThread {
                 result.onSuccess { count ->
-                    Toast.makeText(this, "Sync complete! $count new GIFs downloaded.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Sync complete! $count new reactions downloaded.", Toast.LENGTH_SHORT).show()
                     checkStatus()
                 }.onFailure { err ->
                     Toast.makeText(this, "Sync error: ${err.message}", Toast.LENGTH_LONG).show()
