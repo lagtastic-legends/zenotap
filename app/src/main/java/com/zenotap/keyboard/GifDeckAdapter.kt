@@ -10,12 +10,13 @@ import androidx.appcompat.view.ContextThemeWrapper
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import java.io.File
+import java.util.Locale
 
 /**
  * GifDeckAdapter
  *
  * High-performance RecyclerView adapter for binding live animated reaction cards
- * with tactile touch feedback, tag labeling, live search filtering,
+ * with tactile touch feedback, tag labeling, live search filtering, format badges (GIF vs STICKER),
  * favorites badge indicator, and robust lifecycle detachment/recycling safeguards.
  */
 class GifDeckAdapter(
@@ -58,15 +59,10 @@ class GifDeckAdapter(
                 }
             }
             activeCategory.equals("Favs", ignoreCase = true) || activeCategory.equals("Favorites", ignoreCase = true) -> {
-                allItems.filter { file ->
-                    // Check against persistent favorites set
-                    val context = allItems.firstOrNull()?.let { null } // We check via DeckStorageManager using file context in view
-                    allItems.filter { f -> false } // Re-evaluated below with context
-                    true
-                }
+                allItems
             }
             activeCategory.equals("Recent", ignoreCase = true) -> {
-                allItems // Evaluated below
+                allItems
             }
             activeCategory.equals("All", ignoreCase = true) -> {
                 allItems
@@ -78,20 +74,7 @@ class GifDeckAdapter(
             }
         }
 
-        // Handle context-specific special filters (Favs and Recent)
-        val finalFiltered = when {
-            searchQuery.isNotBlank() -> filtered
-            activeCategory.equals("Favs", ignoreCase = true) || activeCategory.equals("Favorites", ignoreCase = true) -> {
-                // If any item exists, check against DeckStorageManager favorites
-                if (allItems.isNotEmpty()) {
-                    // Will be populated with active context on first pass
-                    allItems
-                } else emptyList()
-            }
-            else -> filtered
-        }
-
-        updateList(finalFiltered)
+        updateList(filtered)
     }
 
     fun applyCustomList(customList: List<File>, categoryLabel: String = activeCategory) {
@@ -142,11 +125,27 @@ class GifDeckAdapter(
     inner class GifViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val cardRoot: View = itemView.findViewById(R.id.card_gif_root)
         private val ivThumb: ImageView = itemView.findViewById(R.id.iv_gif_thumb)
-        private val tvTag: TextView = itemView.findViewById(R.id.tv_gif_tag)
+        private val tvName: TextView = itemView.findViewById(R.id.tv_gif_name)
+        private val tvSize: TextView = itemView.findViewById(R.id.tv_gif_size)
+        private val tvFormat: TextView = itemView.findViewById(R.id.tv_gif_format)
+        private val tvPinBadge: TextView? = itemView.findViewById(R.id.tv_pin_badge)
         private val ivFavBadge: ImageView? = itemView.findViewById(R.id.iv_fav_badge)
 
         fun bind(file: File) {
-            tvTag.text = DeckStorageManager.getDisplayTitleForFile(file)
+            tvName.text = DeckStorageManager.getDisplayTitleForFile(file)
+            tvSize.text = formatFileSize(file.length())
+
+            val isSticker = file.name.contains("sticker", ignoreCase = true)
+            if (isSticker) {
+                tvFormat.text = "STICKER"
+                tvFormat.setTextColor(0xFF34D399.toInt()) // Emerald
+            } else {
+                tvFormat.text = "GIF"
+                tvFormat.setTextColor(0xFF38BDF8.toInt()) // Cyan
+            }
+
+            val isPinned = file.name.startsWith("pinned_", ignoreCase = true)
+            tvPinBadge?.visibility = if (isPinned) View.VISIBLE else View.GONE
 
             // Show favorite star badge if marked as favorite
             val isFav = DeckStorageManager.isFavorite(itemView.context, file)
@@ -174,6 +173,14 @@ class GifDeckAdapter(
                 (ivThumb.drawable as? Animatable)?.stop()
                 ivThumb.setImageDrawable(null)
             } catch (ignored: Throwable) {}
+        }
+
+        private fun formatFileSize(bytes: Long): String {
+            return when {
+                bytes >= 1024 * 1024 -> String.format(Locale.US, "%.1fMB", bytes / (1024f * 1024f))
+                bytes >= 1024 -> String.format(Locale.US, "%dKB", bytes / 1024)
+                else -> "${bytes}B"
+            }
         }
     }
 }

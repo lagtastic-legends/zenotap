@@ -43,6 +43,10 @@ object GifThumbnailLoader {
     private val executor = Executors.newFixedThreadPool(2)
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    fun loadThumbnail(file: File, imageView: ImageView) {
+        loadMedia(file, imageView)
+    }
+
     fun loadMedia(file: File, imageView: ImageView) {
         val cacheKey = "${file.absolutePath}_${file.lastModified()}"
 
